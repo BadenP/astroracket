@@ -1,0 +1,489 @@
+#lang racket/gui
+
+(provide (all-defined-out))
+
+; Lista com os textos do personagem Yoshi
+; Há 3 casos possíveis para cada elemento da lista:
+; 1. Instrução sem uma resposta esperada
+; 2. Pergunta com uma resposta esperada de um valor
+; 3. Pergunta com uma resposta esperada de uma função
+; Toda pergunta possui, além da resposta esperada, uma dica para ser exibida caso o usuário erre a resposta na primeira tentativa.
+; Perguntas que esperam função como resposta possuem casos de teste para serem testadas.
+
+    (define lista-textos
+      '(
+        ("Olá, Astro. Seja bem-vindo.
+
+Neste mundo, as máquinas conquistaram a Terra e você é o último humano que resta. Logo, a esperança da humanidade repousa em seus ombros. Sua missão é aprender Racket para que possa desenvolver soluções para derrotar as máquinas, e assim recuperar o controle do planeta. Estarei aqui para te ajudar nessa jornada! Vou te fornecer os fundamentos e iremos praticar exercícios para que você adquira o conhecimento necessário para completar sua missão.
+
+[sempre pressione a tecla enter para avançar os diálogos]" "")
+
+        ("Vamos começar a aprender sobre Racket, uma linguagem que suporta a programação funcional! Programação funcional é um paradigma de programação em que os programas são
+descritos com aplicação e composição de funções, ela evita mudança de estado e efeitos colaterais. Ou seja, não podemos alterar o valor das variáveis declaradas em Racket. Uma função é um conjunto de expressões que mapeia valores de entrada para valores de saída.
+
+As expressões são entidades sintáticas que quando avaliadas produzem um valor. Consistem de um literal ou uma função primitiva. Exemplos:
+
+Literais de tipos primitivos:
+
+• Inteiros: 1345
+• Racionais: 1/3
+• Complexos com as partes real e imaginária exatas
+• Ponto flutuante: 2.65
+• Complexos com parte real ou imaginária inexata
+• Booleano: #t para verdadeiro ou #f para falso
+• Strings: ''Seu nome''
+
+Também há muitos outros tipos de funções primitivas:
+
+• Aritméticas: +, -, *, /
+• Relacionais: >, >=, <, <=, =
+• Strings: string-length, string-append, number->string, string->number
+
+Além de muitas outras..." "")
+
+        ("O processo de avaliação de expressões de literais considera o valor que um literal representa, enquanto para funções primitivas é avaliada a sequência de instruções de máquina associada com a função. Uma expressão que representa uma função pode ser combinada com expressões que representam dados. Veja mais alguns exemplos:
+> #t
+#t
+> 231
+231
+> ''Banana''
+''Banana''
+> +
+#<procedure:+>
+> 34
+34
+> (+ 3 4)
+7
+> (* 2 6)
+12
+> +
+#<procedure:+>.
+> (+ 12 56)
+68
+> (* 4 20)
+80
+> (> 4 5)
+#f
+> (string-append ''Apenas '' ''um '' ''teste'')
+''Apenas um teste''" "")
+
+        ("Este tipo de expressão é chamado de combinação, consiste de uma lista de expresssões entre parênteses. A expressão mais a esquerda é o operador e as outras expressões são os operandos. O valor de uma combinação é obtido aplicando a função especificada pelo operador aos argumentos, que são os valores dos operandos. A convenção de colocar o operador a esquerda dos operandos é chamada de notação pré-fixa. Portanto, em Racket utilizamos a notação pré-fixa e como vantagem as funções podem receber um número variado de argumentos! Exemplo:
+
+> (* 2 8 10 1)
+160
+
+Combinações também podem ser aninhadas facilmente, isto  é, os elementos das combinações podem também ser combinações:
+
+> (+ (* 3 5) (- 10 6) 5)
+24
+> (+ (* 3 (+ (* 2 4) (+ 3 5))) (+ (- 10 7) 6))
+57
+
+Sendo assim, a definição de expressão também inclui as combinações. Uma expressão consiste de um literal, uma função primitiva, ou uma combinação." "")
+
+        ("Chegou a hora de praticar! Irei te fazer algumas perguntas sobre os fundamentos que vimos até então, responda corretamente os desafios para que você possa ganhar RacketPoints, seus pontos de conhecimento em Racket! Quanto mais pontos você conseguir acumular durante seus desafios, melhor será sua recompensa para te ajudar a retomar o controle da Terra!" "") 
+        ("Sendo assim, o que seria retornado de acordo com a expressão (+ 20 12 2)?" "34" "Dica: lembre-se que em Racket a notação é pré-fixa! O operador sempre está a esquerda e os operandos a direita, ou seja, neste caso estamos utilizando o operador + para efetuar a operação entre os operandos 20, 12 e 2.")
+        ("E o que seria retornado ao inserir 43?" "43" "Dica: lembre-se que o processo de avaliação de expressões de literais considera o valor que um literal representa")
+        ("Insira o retorno obitdo para a expressão (- 123 12 2) " "109"  "Dica: a expressão mais a esquerda é o operador e as outras expressões são os operandos. O valor de uma combinação é obtido aplicando a função especificada pelo operador aos argumentos, que são os valores dos operandos.")
+        ("E o que seria retornado para a expressão(+ (* 2 4) (- 4 6))?" "6"  "Dica: a expressão mais a esquerda é o operador e as outras expressões são os operandos. O valor de uma combinação é obtido aplicando a função especificada pelo operador aos argumentos, que são os valores dos operandos.")
+        ("Agora iremos aprender sobre definições. Definições servem para dar nome a objetos computacionais, sejam dados ou funções. É a forma de abstração mais elementar. Em Racket, definições são feitas com o uso da palavra define:
+> (define x 10)
+> (define y (+ x 24))
+> y
+34
+
+Quando o interpretador encontra uma construção do tipo (define <nome> <exp>) ele associa <nome> ao valor obtido pela avaliação de <exp>. A avaliação de um nome resulta no objeto associado a ele na sua definição. A memória que armazena as associações entre nomes e objetos é chamada de ambiente!" "")
+
+        ("O processo de avaliação de expressões não se aplica a definições. O uso de (define x 10) não implica na aplicação da função define a dois argumentos, sua finalidade é associar o valor 10 à variável x. Portanto, (define x 10) não é uma combinação. Exceções à regra geral de avaliação de expressões são conhecidas como formas especiais.
+
+• define é uma forma especial.
+• Cada forma especial tem sua própria regra de avaliação.
+
+O Racket possui poucas formas especiais, o que facilita a aprendizagem rápida da sintaxe da linguagem. Além disso, é possível criar definições de novas funções, chamadas de funções compostas, usando a sintaxe geral:
+
+(define (<nome> <parâmetros>) <corpo>)
+
+Exemplos:
+
+> (define (quadrado x)
+  (* x x))
+> (define (soma-quadrados a b)
+  (+ (quadrado a) (quadrado b)))
+> (quadrado 5)
+25
+> (quadrado (+ 2 6))
+64
+> (soma-quadrados (+ 2 2) 3)
+25
+
+Observe que as funções compostas (definidas pelo usuário) são utilizadas da mesma forma que as funções pré-definidas." "")
+
+        ("É sua vez de praticar! Defina uma variável chamada raio-terra de valor igual a 6.371" "(define raio-terra 6.371)"  "Dica: lembre-se da estrutura (define (<nome> <parâmetros>) <corpo>) para funções, e (define <nome> <valor>) para variáveis")
+
+        ("O que é retornado quando o interpreador avalia a sequência abaixo?
+
+(define a 3) 
+(define b (+ a 1))
+(+ a b (* a b))" "19"  "Dica: o processo de avaliação de expressões de literais considera o valor que um literal representa, enquanto para funções primitivas é avaliada a sequência de instruções de máquina associada com a função. Não se esqueça de respeitar as ordens de operações pelos parênteses e ler corretamente pela notação pré-fixa.")
+
+        ("
+(define a 3) 
+(define b (+ a 1))
+
+Considerando ainda o contexto das definições anteriores, o que é retornado ao avaliar a seguinte expressão? 
+(= a b)" "#f"  "Dica: lembre-se de que as definições de a e b já foram feitas anteriormente no código. Pergunte a si mesmo: qual é o valor atual de a e b? A expressão (= a b) compara se esses dois valores são iguais. Considere as definições prévias e veja se você consegue determinar se a expressão é verdadeira ou falsa.")
+
+        ("Ok Astro, iremos aprender sobre operadores lógicos! Predicados podem ser compostos usando as formas especiais and e or e a função not. A função (not <e>) produz #t quando <e> for avaliado para um valor falso, e #f caso contrário:
+
+> (not (> 5 2))
+#f
+> (not (< 5 2))
+#t
+
+Para o operador and (and <e1> ... <en>):
+Se não há expressões, retorna #t.
+Se a primeira expressão não é um valor, ela é avaliada e substituída pelo seu valor. 
+Se a primeira expressão é falsa, retorna #f.
+Se a primeira expressão é verdadeira, substitua a expressão and por uma nova expressão and sem a primeira expressão. 
+O Racket mantém os valores true no passo a passo, ou seja, não elimina os valores true.
+
+Exemplo de uso do and:
+
+> (and (= 2 2) (> 3 1))   
+#t
+
+Para o operador (or <e1> ... <en>):
+  
+Se não há expressões, retorna #f 
+Se a primeira expressão não é um valor, ela é avaliada e substituída pelo seu valor.
+Se a primeira expressão é verdadeira, retorna #t.
+Se a primeira expressão é falsa, substitua a expressão or por uma nova expressão or sem a primeira expressão. 
+O Racket mantém os valores false no passo a passo, ou seja, não elimina os valores false.
+
+
+Exemplo de uso do or:
+
+> (or (> 5 2) (= 3 2))
+#t" "")
+        
+        ("Agora iremos aprender sobre condicionais! A forma especial cond é utilizada para especificar funções deste tipo. Olhe só um exemplo para verificar o módulo de um número:
+
+(define (abs x)
+  (cond
+    [(>= x 0) x]
+    [(< x 0) (- x)]))
+
+Como as duas condições são mutuamente excludentes, podemos usar o else
+
+(define (abs x)
+  (cond
+    [(>= x 0) x]
+    [else (- x)]))
+
+A forma geral do cond é:
+(cond
+  (<p1> <e1>)
+  (<p2> <e2>)
+  (<p3> <e3>)
+  ...
+  [(else <en>)])
+
+Cada par (<p> <e>) é chamado de cláusula. A primeira expressão de uma cláusula é chamada de predicado, isto  é, uma expressão cujo o valor é interpretado como verdadeiro ou falso. A segunda expressão de uma cláusula é chamada de consequente.
+
+Expressões cond são avaliadas da seguinte maneira: se o primeiro predicado não é um valor, avalie o predicado e o substitua pelo seu valor. Ou seja, substitua todo o cond por um novo cond onde o primeiro predicado foi substituído pelo seu valor
+Se o primeiro predicado é true ou else, substitua a expressão cond inteira pelo primeiro consequente Se o primeiro predicado é false, remove a primeira cláusula. Isto é, substitua o cond por um novo cond sem a primeira cláusula
+Se não tem mais cláusula, sinalize um erro." "")
+
+        ("A forma especial if pode ser usada da seguinte forma:
+
+(if <predicado> <consequente> <alternativa>)
+
+Expressões if são avaliadas da seguinte maneira: se o predicado não é um valor, avalie o predicado e o substitua pelo seu valor. Se o predicado é true, substitua toda a expressão if pelo consequente. Se o predicado é false, substitua toda a expressão if pela alternativa
+         
+Agora podemos responder de acordo com o contexto anterior:
+(define a 3) 
+(define b (+ a 1))
+
+Considerando as definições acima, responda o que será retornado ao avaliar a seguinte expressão:
+
+(if (and (> b a) (< b (* a b))) b a)" "4"  "Dica: lembre da avaliação das cláusulas para operadores lógicos e releia sobre a avaliação de expressões if")
+
+        ("
+Definições anteriores:
+(define a 3) 
+(define b (+ a 1))
+
+E o que será retornado ao avaliar a seguinte expressão?
+
+(* (cond [(> a b) a]
+         [(< a b) b]
+         [else -1])
+         (+ a 1))" "16"  "Dica: considere as condições dentro do cond e pense qual opção será executada com base nos valores atuais de a e b. Em seguida, avalie a expressão completa para encontrar o resultado final. Lembre-se de que a ordem de operações é crucial para determinar o resultado correto.")
+
+
+        ("Veremos agora o processo para criar funções em Racket, guiado pelas receitas de projeto do livro How to Design Programs. Aqui está um resumo breve dos passos para fazer funções em Racket:
+
+    Assinatura, Propósito e Cabeçalho:
+        Declare a assinatura da função indicando os tipos de entrada e saída.
+        Escreva o propósito da função, descrevendo o que ela faz.
+        Formule o cabeçalho da função com a estrutura (define (<nome_funcao> <parâmetros>) <corpo>)
+
+    Exemplos:
+        Forneça exemplos que ilustrem o comportamento da função.
+        Inclua casos simples e casos especiais.
+
+    Template:
+        Construa um template que define a estrutura básica da função, considerando os tipos de dados dos parâmetros.
+        Utilize o template para guiar o desenvolvimento da função.
+
+    Código do Corpo da Função:
+        Escreva o código interno da função, seguindo a lógica delineada nos passos anteriores.
+        Utilize estruturas de controle, como if, cond, e estruturas de dados, conforme necessário.
+
+    Teste e Depuração:
+        Teste a função com diversos casos, verificando se ela produz os resultados esperados.
+        Depure a função, identificando e corrigindo possíveis erros ou melhorando sua eficiência." "")
+
+        ("Veremos um exemplo para definir uma função que calcule o dobro de uma dado valor:
+
+Passo 1: Assinatura, propósito e cabeçalho
+;; Número -> número 
+;; Produz o dobro de n.
+(define (dobro n) 0)
+
+As convenções utilizadas são o nome do tipo usando CamelCase e o nome da função em minúsculo usando - para separar as palavras. Também podemos utilizar ; ou ;; para comentar linhas ao escrever códigos em Racket, e para comentários em bloco podemos utilizar a estrutura #||#:
+Exemplos de uso dos comentários:
+;comentário em linha única
+#| comentario 
+   em
+   bloco  |#
+
+Passo 2: Exemplos
+
+;; Número -> número 
+;; Produz o dobro de n
+(check-equal? (dobro 0) 0)
+(check-equal? (dobro 4) 8)
+(check-equal? (dobro -2) -4)))
+(define (dobro n) 0)
+
+Repare que o uso da estrutura (check-equal? <valor a> <valor b>) serve para testes em Racket, verificando se o resultado de uma função aplicando argumentos específicos será igual ao resultado esperado.
+
+Passo 3: Template
+
+Usaremos um template de tipos atômicos ''fun-for-atomic'', pois o parâmetro da função dobro é um número.
+
+;; Número -> número 
+;; Produz o dobro de n
+(check-equal? (dobro 0) 0)
+(check-equal? (dobro 4) 8)
+(check-equal? (dobro -2) -4)))
+;(define (dobro n) 0)
+(define (fun-for-atomic a)
+    (... a))
+
+Então, ajustamos os nomes no template para a função que estamos definindo:
+
+;; Número -> número 
+;; Produz o dobro de n
+(check-equal? (dobro 0) 0)
+(check-equal? (dobro 4) 8)
+(check-equal? (dobro -2) -4)))
+;(define (dobro n) 0)
+(define (dobro n)
+    (... n))
+
+Passo 4: Código do corpo da função
+
+Baseado nos passos anteriores, escrevemos o corpo da função:
+
+;; Número -> número 
+;; Produz o dobro de n
+(check-equal? (dobro 0) 0)
+(check-equal? (dobro 4) 8)
+(check-equal? (dobro -2) -4)))
+;(define (dobro n) 0)
+(define (dobro n)
+    (* 2 n))
+
+Abaixo está exibido o programa completo, com as bibliotecas exigidas e as funções de teste para utilizar na IDE DrRacket:
+
+#lang racket
+(require rackunit)
+(require rackunit/text-ui)
+
+;; Número -> número 
+;; Produz o dobro de n.
+(define dobro-tests
+(test-suite
+''dobro tests''
+(check-equal? (dobro 0) 0)
+(check-equal? (dobro 4) 8)
+(check-equal? (dobro -2) -4)))
+(define (dobro n)
+(* 2 n))
+
+;; Teste ... -> Void
+;; Executa um conjunto de testes
+(define (executa-testes . testes)
+(run-tests (test-suite ''Todos os testes'' testes))
+(void))
+;; Chama a função para executar os testes
+(executa-testes dobro-tests)" "")
+
+        ("Agora já sabemos como fazer funções! Defina uma função de nome ''maior-valor'' que retorne o maior valor entre 2 valores dados." maior-valor "Dica: você precisará de dois parâmetros que representam os valores a serem comparados. Pense em como você pode usar uma expressão condicional para determinar qual dos dois valores é maior. Lembre-se de que o resultado da função deve ser o valor que é considerado maior."
+                        (((1 2) 2)
+                         ((6 6) 6)
+                         ((123 121) 123)
+                         ((-34 -65) -34)
+                         ((4 -5) 4)))
+
+        ("Defina uma função de nome ''maior-palavra'' que retorne a maior palavra entre duas palavras dadas." maior-palavra "Dica: utilize a função primitiva string-length"
+                        ((("abc" "roma") "roma")
+                         (("casamento" "lebre") "casamento")
+                         (("" "dois") "dois")
+                         (("telha" "elefante") "elefante")
+                         (("" "") "")))
+
+        ("Agora iremos aprender sobre estruturas, ou structs. Estruturas em Racket são usadas para representar dados onde dois ou mais valores precisam estar agrupados, como registros de alunos, placar de jogos, ou informações de produtos.
+
+Declaração de estrutura:
+
+Utiliza-se a forma especial struct para definir estruturas. Exemplo:
+
+(struct ponto (x y))
+
+Construção e uso de estruturas:
+
+Construtor: ponto (no exemplo)
+Predicado: ponto? para testar se um valor é do tipo definido.
+Seletores: ponto-x e ponto-y para acessar os campos.
+
+Exemplo:
+
+(struct ponto (x y))
+(define p1 (ponto 3 4))
+(define p2 (ponto 8 2))
+
+> (ponto-x p1)
+3
+> (ponto-y p1)
+4
+> (ponto-x p2)
+8
+> (ponto-y p2)
+2
+> (ponto? p1)
+#t
+>(ponto? ''ola'')
+#f
+
+
+Transparência de Estruturas:
+
+Estruturas são, por padrão, ''não transparentes'', ou seja, seus campos não são exibidos para preservar encapsulamento. Pode-se usar a palavra-chave #:transparent para tornar a estrutura ''transparente''
+
+Exemplo:
+
+(struct ponto (x y))
+> (ponto 3 4)
+#<ponto>
+
+(struct ponto (x y) #:transparent)
+> (ponto 3 4)
+(ponto 3 4)" "")
+
+    ("Agora iremos desenvolver nosso aprendizado sobre estruturas. Para cada afirmação que eu fizer, você de inserir #t se for verdadeira ou #f se for falsa.
+
+Avalie se esta afirmação é verdadeira ou falsa: a função make-struct é uma forma especial em Racket para construção de estruturas." "#f" "Dica: relembre sobre qual é a forma especial em Racket para a construção de estruturas.")
+
+    ("Avalie se esta afirmação é verdadeira ou falsa: ao definirmos estruturas em Racket há um construtor, um predicado para testar se um valor é do tipo da estrutura e seletores para acessar os campos da estrutura." "#t" "Dica: pense se é possível verificarmos se um valor é de certo tipo e se podemos acessar campos de uma estrutura.")
+
+    ("Que legal Astro, estamos nos aproximando do fim! Veremos como funcionam as listas em Racket:
+
+Elas são estruturas recursivas nas linguagens funcionais. A ideia é que toda lista é formada por dois campos: o primeiro representa um valor da lista e o segundo representa o resto da lista (que é uma lista). É dessa forma que vemos como ela é uma estrutura recursiva.
+
+Uma lista pré-definida em Racket é:
+
+empty (vazia) ou (cons first rest) onde first é o primeiro elemento da lista e rest é uma Lista com o restante dos elementos
+
+Vejamos o template baseado na definição:
+
+(define (fun-for-list lst)
+  (cond
+      [(empty? lst) ...]
+      [else ... (first lst)
+            ... (fun-for-list (rest lst)) ... ]))
+
+;; Lista com o elemento 3
+> (define lst1 (cons 3 empty))
+;; Lista com os elementos 8 e 7
+> (define lst2 (cons 8 (cons 7 empty)))
+> lst1
+'(3)
+> lst2
+'(8 7)
+> (first lst2)
+8
+> (rest lst2)
+'(7)
+> (rest (rest lst2))
+'()
+> (rest lst1)
+'()
+
+O Racket oferece uma forma conveniente de criar listas:
+
+> (list 4 5 6 -2 20)
+'(4 5 6 -2 20)
+
+Em geral (list <a1> <a2> ... <an>) é equivalente a (cons <a1> (cons <a2> (cons ... (cons <an> empty) ...)))
+
+Adição e remoção de elementos:
+
+Use cons para adicionar elementos no início da lista.
+Utilize append para concatenar listas.
+Remova elementos com remove.
+
+Exemplos:
+
+> (define nova-lista (cons 0 empty))
+(define lista-completa (append nova-lista '(6 7 8)))
+(define sem-oito (remove 8 lista-completa))
+> nova-lista
+'(0)
+> lista-completa
+'(0 6 7 8)
+> sem-oito
+'(0 6 7)
+
+Para verificar se uma lista está vazia utilize o predicado empty?
+Para verificar o comprimento use length.
+
+Exemplos:
+
+>(define vazia? (empty? (list 1 2 3))) 
+> vazia?
+#f
+> (length (list 4 20))
+2" "")
+
+    ("Exemplo de problema com lista: defina uma função que receba dois parâmetros, um valor a e uma lista lst e crie uma nova lista a partir de lst sem a primeira
+ocorrência de a.
+
+(define (remove lst a)
+  (cond
+     [(empty? lst) empty]
+     [else
+         (cond
+            [(equal? (first lst) a) (rest lst)]
+            [else (cons (first lst)
+                   (remove (rest lst) a))])]))" "")
+
+        ("Vamos ao desafio! Defina uma função chamada maximo-lista que encontre o valor máximo de uma lista de números." maximo-lista "Dica: lembre-se de lidar com casos base, como quando a lista está vazia ou tem apenas um elemento. Considere também a utilização das funções first e rest para acessar o início e o resto da lista." ((((1 2)) 2) (((1 2 3)) 3) (((1 2 10)) 10)))
+        ("Defina uma função chamada remove-duplicados que receba como entrada uma lista lst e devolva uma nova lista que é como lst com apenas uma ocorrência dos elementos repetidos consecutivos. Exemplo:
+ 
+> (remove-duplicados (list 1 1 1 1 2 3 3 4 4 5 5 5))
+'(1 2 3 4 5)." remove-duplicados "Dica: lembre-se de lidar com casos base, como quando a lista está vazia ou tem apenas um elemento. Considere também a utilização das funções first e rest para acessar o início e o resto da lista." ((((1 1 2 2 2)) (1 2)) (((1 2 2 3 3 3 4)) (1 2 3 4)) (((5 5 5 5 2 2 10 1 1)) (5 2 10 1))))
+
+        ("Muito bem, Astro! Chegamos ao fim da sua missão, você será recompensado por chegar até aqui! Chegou a hora de descobrirmos qual nave você conquistou para retornar para a Terra." "")))

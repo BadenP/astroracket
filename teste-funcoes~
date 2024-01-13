@@ -1,0 +1,38 @@
+#lang racket/gui
+(define (test-dynamic-function function-name expression test-cases)
+  (define lexical-context (make-base-namespace))
+
+  (parameterize ((current-namespace lexical-context))
+    (eval (read (open-input-string expression)) lexical-context))
+
+  (for-each (lambda (test-case)
+              (let* ((args (car test-case))
+                     (expected (cadr test-case))
+                     (function-symbol (string->symbol (symbol->string function-name)))
+                     (function (eval function-symbol lexical-context)) ; Obtemos a função correspondente
+                     (actual (apply function args)))
+                (if (equal? expected actual)
+                    (printf "Test for ~a passed!\n" args)
+                    (printf "Test for ~a failed. Expected: ~a, Actual: ~a\n" args expected actual))))
+            test-cases))
+
+(test-dynamic-function 'mul-2 "(define (mul-2 x y) (+ (* x y) 2))"
+                       '(((1 2) 0)
+                         ((0 3) 1)
+                         ((4 5) 20)))
+
+
+(test-dynamic-function 'mul-3 "(define (mul-3 x y z) (+ (* x y z) 2))"
+                       '(((1 2 3) 8)
+                         ((0 3 1) 2)
+                         ((4 5 2) 42)))
+
+
+(test-dynamic-function 'mul-4 "(define (mul-4 x) (+ (* x x) 2))"
+                       '(((1) 1)
+                         ((0) 1)
+                         ((2) 1)
+                         ((3) 1)
+                         ((4) 1)))
+
+

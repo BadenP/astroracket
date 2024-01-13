@@ -1,0 +1,397 @@
+#lang racket/gui
+
+; Importação de outros arquivos do jogo
+(require "definicoes") 
+
+; Flags para indicar início e fim do jogo, auxiliam para atualizar elementos na tela
+(define inicio-jogo #t)
+(define fim-jogo #f)
+
+(define texto-canvas "")
+(define 2-tentativa? #f)
+
+; Número inicial de pontos
+(define pontos 0) 
+(define instrucao-atual-index 0)
+(define instrucao-atual (first (first lista-textos)))
+(define resposta-certa #f)
+(define resposta-errada #f)
+
+; Declaração da posição inicial dos astronautas
+(define astro-x 10)
+(define astro-y 423)  
+(define npc-x 625)
+(define npc-y 423)
+
+;; Check if images are close
+; Void -> Boolean
+(define (images-close?)
+  (let* ([astronaut-center-x (+ astro-x (/ IMAGE-WIDTH 2))]
+         [astronaut-center-y (+ astro-y (/ IMAGE-HEIGHT 2))]
+         [standing-astronaut-center-x (+ npc-x (/ IMAGE-WIDTH 2))]
+         [standing-astronaut-center-y (+ npc-y (/ IMAGE-HEIGHT 2))]
+         [distance (sqrt (+ (sqr (- astronaut-center-x standing-astronaut-center-x))
+                            (sqr (- astronaut-center-y standing-astronaut-center-y))))])
+    (< distance 75)))
+
+(define dialog (new dialog%
+                    [width 200]
+                    [height 200]
+                    [parent frame]
+                    [label "Fim de jogo"]))
+
+(define btn-fim (new button% [parent dialog]
+                     [label "Reiniciar"]))
+
+(define btn-fim2 (new button% [parent dialog]
+                     [label "Encerrar"]
+                     [callback (lambda (button event) (exit))]))
+
+(define (abrir-fim-jogo)
+    ;(send dialog show #t)
+    (void))
+
+;; Timer para a escrita dinâmica de texto
+(define text "" )
+(define text-index 0)
+(define typing-timer (new timer% [notify-callback (lambda () (texto-digitado instrucao-atual))]))
+
+;; Set the timer interval and start it
+;(send typing-timer start 15) 
+
+;; Type text function
+(define (texto-digitado texto)
+  (if (< text-index (string-length texto))
+      (begin
+        (set! text (substring texto 0 (+ text-index 1)))
+        (set! text-index (+ text-index 1))
+        (send field set-value text) ; Update text-field-usuario value for each typed character ; Make sure the frame is visible
+        (send field refresh)) ; Update text-field-usuario display
+      (send typing-timer stop)))
+
+
+    (define (analise-resposta resposta-field-usuario)
+      (if (< instrucao-atual-index (length lista-textos))
+          (begin 
+            (let* ([elemento-lista (list-ref lista-textos instrucao-atual-index)]
+                   [resultado-esperado (list-ref elemento-lista 1)])
+
+                   (if (equal? resultado-esperado "")
+                       (proxima-instrucao)
+                       (begin
+                         (let* ([resposta (string-trim resposta-field-usuario)])
+                           (if (= (length elemento-lista) 3)
+                               (testa-resultado resposta resultado-esperado)
+                               (testa-funcao resultado-esperado resposta (list-ref elemento-lista 3))))))))
+          (begin
+            (set! resposta-errada #f)
+            (set! resposta-certa #f)
+            (set! fim-jogo #t))))
+
+    (define (proxima-instrucao)
+      (set! instrucao-atual-index (add1 instrucao-atual-index)) 
+        (printf "~a\n" instrucao-atual-index)
+        (if (< instrucao-atual-index (length lista-textos))
+            (set! instrucao-atual (first (list-ref lista-textos instrucao-atual-index)))
+            ;colocar aqui condicao pra parar e chegar no fim do jogo
+            (void))
+      (set! texto-canvas instrucao-atual)
+      (reset-text-field-usuario))
+
+
+    (define (testa-resultado entrada resultado-esperado)
+      (let* ([aceita #t])
+          (with-handlers
+              [(exn:fail? (lambda (e)
+                            (printf "Erro durante a avaliação da expressão: ~a\n" e)
+                            (set! aceita #f)
+                            (resposta-incorreta e)))] 
+            (let* ([resultado (read (open-input-string entrada))]
+                   [resultado-esperado-avaliado (read (open-input-string resultado-esperado))])
+              (if (and aceita (equal? resultado resultado-esperado-avaliado)) 
+                  (resposta-correta 5)
+                  (resposta-incorreta ""))
+      (printf "Resultado: ~a, Esperado: ~a\n" resultado resultado-esperado-avaliado)))))
+
+    (define (resposta-correta n)
+      (set! resposta-certa #t)
+      (set! resposta-errada #f)
+      (add-pontos n)
+      (set! 2-tentativa? #f)
+      (proxima-instrucao))
+
+    (define (resposta-incorreta e)
+      ;Mensagem 
+      (set! resposta-certa #f)
+      (set! resposta-errada #t)
+      (if 2-tentativa?
+          (begin 
+            (set! 2-tentativa? #f)
+            (proxima-instrucao))
+          (begin
+            (if (equal? "" e)
+                (send field set-value (string-append (send field get-value) "\n" (list-ref (list-ref lista-textos instrucao-atual-index) 2)))
+                (send field set-value (string-append (send field get-value) "\nMensagem de erro: " (exn-message e) "\n\n" (list-ref (list-ref lista-textos instrucao-atual-index) 2))))        
+            (set! 2-tentativa? #t))))
+
+
+    (define (reset-text-field-usuario)
+      (set! text "")
+      (set! text-index 0)
+      (send typing-timer start 20)
+      (send field-usuario refresh))
+
+    (define (testa-funcao nome entrada casos-de-teste)
+      (define namespace (make-base-namespace))
+      (let* ([aceita #t]
+             [mensagem-erro ""])
+
+        (parameterize ((current-namespace namespace))
+          (eval '(require racket) namespace)
+          (with-handlers
+              [(exn:fail? (lambda (e)
+                            (printf "Erro durante a avaliação da expressão: ~a\n" e)
+                            (set! aceita #f)
+                            (resposta-incorreta e)))] 
+            (eval (read (open-input-string entrada)) namespace)
+
+            (if aceita
+                (for/list ([caso casos-de-teste])
+                    (printf "Args = ~a\n" (first caso))
+                    (printf "Esperado = ~a\n" (first (rest caso)))
+                    (let* ((args (car caso))
+                           (esperado (cadr caso))
+                           (funcao-simbolo (string->symbol (symbol->string nome)))
+                           (funcao (eval funcao-simbolo namespace)) ; função correspondente
+                           (resultado (apply funcao args)))
+
+                      (if (equal? esperado resultado)
+                          (void)
+                          (begin
+                            (set! aceita #f)
+                            ;(set! mensagem-erro (string-append mensagem-erro "\nTeste para " args "falharam"))
+                            (resposta-incorreta mensagem-erro)))))
+                (void))))
+
+        (if aceita 
+            (resposta-correta 10)
+            (void))))
+
+    ;; Add pontos to the count
+    (define (add-pontos amount)
+      (set! pontos (+ pontos amount))
+      (update-pontos-label))
+
+    ;; Update the pontos label
+    (define (update-pontos-label)
+      (send canvas refresh))
+
+; Declaração do canvas
+(define my-canvas%
+  (class canvas%
+    (super-new)
+
+    ;; Inicialização da direção do Astro e dos frames
+    (define direction 'right) 
+    (define frame-astro 0)  
+    (define frame-npc 0) 
+
+    (define movendo? #f)
+
+    ; Propriedades da exibição dos textos
+    (define proximo-npc #f) ; Flag to indicate if close enough for dialog
+    (define mission-message-altered? #f) ; Flag to indicate if mission message has been altered
+
+    ;; Declaração do timer para atualizar o frame do astronauta npc
+    (define standing-timer (new timer% [notify-callback (lambda () (update-standing-frame))]))
+
+    ;; Inicialização do timer
+    (send standing-timer start 300)
+
+    ;; Método quando uma tecla é acionada no teclado
+    ; Mudar esses defines por let
+    (define/override (on-char event)
+      (let* ([tecla (send event get-key-code)]
+             [dx 0]
+             [dy 0])
+      (cond
+        [(eq? tecla 'left) (set! dx -15) (set! direction 'left) (set! proximo-npc #f)]
+        [(eq? tecla 'right) (set! dx 15) (set! direction 'right) (set! proximo-npc #f)]
+        ;[(eq? tecla 'up) (set! dy -15) (set! proximo-npc #f)]
+        ;[(eq? tecla 'down) (set! dy 15) (set! proximo-npc #f)]
+        ;[(eq? tecla 'up) (set! instrucao-atual-index (add1 instrucao-atual-index))]
+        ;[(eq? tecla 'down) (set! instrucao-atual-index (sub1 instrucao-atual-index))]
+        [(eq? tecla '#\return ) (analise-resposta (send field-usuario get-value))])
+
+      ; Atualiza os frames se o Astro estiver se movendo
+      (if (not (and (eq? dx 0) (eq? dy 0)))
+          (begin
+            (set! movendo? #t)
+            (set! frame-astro (modulo (+ frame-astro 1) 4)))
+          (set! movendo? #f))
+
+      (move-astro dx dy)
+      (check-and-display-message)))
+
+    (define/override (on-event event)
+      (when (eq? (send event get-event-type) 'key-up)
+        (define key (send event get-key-code))
+        (cond
+          [(eq? key 'return)
+           (let ((user-input (send field-usuario get-value)))
+             (when mission-message-altered? ; Apenas atualiza se a mensagem da missão foi alterada
+               (set! texto-canvas user-input) ; Atualiza a mensagem no canvas
+               (set! mission-message-altered? #f)))])))
+
+    
+    ;; Método para desenhar elementos no canvas
+    (define/override (on-paint)
+      (define dc (send this get-dc))
+      (send dc draw-bitmap background-image 0 0)
+      ;(send dc draw-bitmap nave-1 880 300)
+      ;(send dc draw-bitmap nave-2 750 360)
+      ;(send dc draw-bitmap nave-3 400 415)
+      (send dc draw-bitmap yoshi npc-x npc-y)
+      ;(send dc draw-bitmap nave-p 900 300)
+
+      (if inicio-jogo
+          (begin
+            (send dc set-text-foreground "white")
+            (send dc draw-text "Utilize as setas para se mover até o Yoshi" 480 80))
+          (void))
+
+      (if resposta-certa
+          (begin
+            (send dc set-text-foreground "black")
+            (send dc draw-text "É isso aí! Você ganhou novas RacketCoins!" (+ npc-x -80) (- npc-y 40)))
+          (void))
+
+      (if resposta-errada
+          (begin
+            (send dc set-text-foreground "black")
+            (send dc draw-text "Que pena, sua resposta está incorreta. Tente novamente!" (+ npc-x -100) (- npc-y 40)))
+          (void))
+
+      (if fim-jogo
+          (begin
+            (send dc set-text-foreground "black")
+            (cond[(< pontos 50) (send dc draw-text "É uma pena... Essa nave é tão pequena!" (+ npc-x -150) (- npc-y 30)) (send dc draw-bitmap nave-3 950 415)]
+                 [(and (> pontos 50)(< pontos 85)) (send dc draw-text "Você conseguiu uma nave mediana, aprenda mais!" (+ npc-x -150) (- npc-y 30)) (send dc draw-bitmap nave-2 950 360)]
+                 [(>= pontos 85) (send dc draw-text "Parabéns, Astro! Você conseguiu a nave perfeita!!" (+ npc-x -150) (- npc-y 30)) (send dc draw-bitmap nave-1 950 300)])
+            (abrir-fim-jogo))
+          (void))
+
+      ;; Draw the moving astronaut image based on direction and frame number
+      (if movendo? 
+          (begin
+            (let* ((running-images (if (eq? direction 'right) astronauta-correndo-esquerda astronauta-correndo-direita))
+                 (current-image (list-ref running-images frame-astro)))
+            (send dc draw-bitmap current-image astro-x astro-y)))
+          (begin
+            (let* ((standing-images (if (eq? direction 'right) astronauta-parado-direita astronauta-parado-esquerda))
+             (standing-image (list-ref standing-images frame-npc)))
+        (send dc draw-bitmap standing-image astro-x astro-y))))
+
+      ;; Draw the standing astronaut image based on standing frame number
+      ;(let* ((standing-images (if (eq? direction 'right) yoshi yoshi))
+             ;(standing-image (list-ref standing-images frame-npc)))
+        ;(send dc draw-bitmap standing-image npc-x npc-y))
+   
+
+      ;; Draw the circle image
+      (send dc draw-bitmap coin-image 5 1)
+      (send dc set-text-foreground "white")
+      (send dc set-font (make-object font% 12 'default 'normal 'normal))
+      (send dc draw-text (format " ~a" pontos) 20 0)
+
+      (define (draw-multiline-text)
+        (let* ([text-lines (string-split texto-canvas "\n")])
+          (for/list ([line text-lines]
+                     [index (in-range (length text-lines))])
+            (send dc draw-text line 50 (+ 50 (* index 10))))))
+
+      ;(draw-multiline-text)
+
+      ;; Draw dialog if close enough
+      (when (and proximo-npc inicio-jogo)
+        (set! inicio-jogo #f)
+        ;(send field-usuario set-value "Digite aqui suas respostas!")
+        (send dc set-text-foreground "black")
+        (send dc set-font (make-object font% 12 'default 'normal 'normal))
+        (send dc draw-text "" (+ astro-x -80) (- astro-y 30))))
+
+    ; Número, número -> Void
+    ; Define as novas coordenadas do Astro
+    (define (move-astro dx dy)
+      (let * ([novo-x (+ astro-x dx)]
+              [novo-y (+ astro-y dy)])
+      ; Condições para a imagem não ultrapassar a janela
+        ;(when (and (<= 0 novo-x (- width IMAGE-WIDTH)) (<= 0 novo-y (- height IMAGE-HEIGHT)))
+         (when (and (< novo-x (- npc-x IMAGE-WIDTH)) (<= 0 novo-x)) 
+          (set! astro-x novo-x)
+          (set! astro-y novo-y)
+          (send this refresh)
+          (check-and-display-message))))
+
+    (define astronaut-dialog-shown? #f) 
+
+    (define (check-and-display-message)
+      (when (images-close?)
+        (set! proximo-npc #t)
+        ;(set! instrucao-atual (list-ref lista-textos instrucao-atual-index))
+        ;(set! texto-canvas (car instrucao-atual))
+        (send canvas refresh)
+        (send typing-timer start 15)))
+
+
+    ;; Update the standing frame periodically
+    (define (update-standing-frame)
+      (set! frame-npc (modulo (+ frame-npc 1) 4))
+      (send this refresh))))
+
+;; Display a message in a dialog
+(define (display-message msg)
+  (define dialog (new dialog% [parent frame] [label "Message"] [stretchable-width #f]))
+  (define msg-text (new message% [parent dialog] [label msg]))
+  (define button (new button% [parent dialog] [label "OK"] [callback (lambda (button event) (send dialog show #f))]))
+  (send dialog show #t))
+
+
+;; Create the canvas
+(define canvas (new my-canvas% [parent frame]))
+
+;; Create a vertical panel
+(define panel (new vertical-panel% 
+               [parent frame]
+               [min-height 130] 
+               [stretchable-height #f]))
+
+(define panel2 (new horizontal-panel% 
+               [parent frame]
+               [min-height 100] 
+               [stretchable-height #f]))
+
+
+;; Create a text field-usuario
+(define field (new text-field%
+               [label ""]
+               [parent panel]
+               [style '(multiple)]))
+
+
+(define field-usuario (new text-field%
+               [label "Insira aqui suas respostas:"]
+               [parent panel2]
+               [style '(multiple)]))
+
+
+(define btn (new button%
+               [label "Enviar resposta"]
+               [parent panel2]
+               [callback (lambda (button event) (analise-resposta (send field-usuario get-value)))]
+               ))
+
+
+(send frame show #t)
+
+
