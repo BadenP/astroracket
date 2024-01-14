@@ -1,0 +1,219 @@
+#lang racket
+
+(require racket/gui)
+(require racket/base)
+(require rackunit)
+(require rackunit/text-ui)
+
+; Importação da lista contendo a sequência de instruções do jogo
+(require "lista-textos")
+
+; Imagens dos personagens
+(define astronauta-correndo-esquerda (list (make-object bitmap% "imagens/astronauta-ce1.png")
+                                      (make-object bitmap% "imagens/astronauta-ce2.png")
+                                      (make-object bitmap% "imagens/astronauta-ce3.png")
+                                      (make-object bitmap% "imagens/astronauta-ce4.png")))
+
+(define astronauta-correndo-direita (list (make-object bitmap% "imagens/astronauta-cr1.png")
+                                     (make-object bitmap% "imagens/astronauta-cr2.png")
+                                     (make-object bitmap% "imagens/astronauta-cr3.png")
+                                     (make-object bitmap% "imagens/astronauta-cr4.png")))
+
+(define astronauta-parado-direita (list (make-object bitmap% "imagens/astronauta-pe1.png")
+                                       (make-object bitmap% "imagens/astronauta-pe2.png")
+                                       (make-object bitmap% "imagens/astronauta-pe3.png")
+                                       (make-object bitmap% "imagens/astronauta-pe3.png")))
+
+(define astronauta-parado-esquerda (list (make-object bitmap% "imagens/astronauta-pr1.png")
+                                      (make-object bitmap% "imagens/astronauta-pr2.png")
+                                      (make-object bitmap% "imagens/astronauta-pr3.png")
+                                      (make-object bitmap% "imagens/astronauta-pr3.png")))
+
+(define racket-icone (make-object bitmap% "imagens/icon.png")) ; Imagem do ícone do Racket
+(define background (make-object bitmap% "imagens/background.jpg")) ; Imagem do background
+(define yoshi (make-object bitmap% "imagens/yoshi.png")) ; Imagem do Yoshi
+(define nave-1 (make-object bitmap% "imagens/nave-1.png")) ; Imagem da nave 1
+(define nave-2 (make-object bitmap% "imagens/nave-2.png")) ; Imagem da nave 2
+(define nave-3 (make-object bitmap% "imagens/nave-3.png")) ; Imagem da nave 3
+
+; Definições das variáveis
+
+(define astro-largura 50)
+(define astro-altura 60)
+(define inicio-jogo #t)  ; Flag de início de jogo
+(define fim-jogo #f)     ; Flag de fim de jogo
+(define texto-canvas "") ; Texto exibido no canvas
+(define 2-tentativa? #f) ; Flag de segunda tentativa para acertar pergunta
+(define pontos 0)        ; Número de pontos 
+(define indice-instrucao-atual 0) ; índice da instrução atual
+(define instrucao-atual (first (first lista-textos))) ; instrução atual pra ser exibida na tela
+(define resposta-certa #f) ; Flag de resposta certa
+(define resposta-errada #f) ; Flag de resposta errada
+(define astro-x 10) ; Declaração da posição inicial do Astro
+(define astro-y 424) ; Declaração da posição inicial do Astro
+(define yoshi-x 880) ; Declaração da posição do Yoshi
+(define yoshi-y 425) ; Declaração da posição do Yoshi
+(define texto-dinamico "" ) ; Texto digitado caracter por caracter
+(define indice-texto 0) ; Índice do texto digitado
+(define digita-timer (new timer% [notify-callback (lambda () (texto-digitado instrucao-atual))])) ; Timer para a escrita dinâmica de texto
+(define sentido 'right) ; Inicialização da direção do Astro e dos frames
+(define frame-astro 0)  ; Inicialização do frame do Astro
+(define movendo? #f) ; Flag para identificar a movimentação do astro e atualizar os frames
+(define proximo-yoshi #f) ; Flag para indicar se está próximo ao Yoshi
+(define frame-astro-timer (new timer% [notify-callback (lambda () (atualiza-frame-astro))])) ; Declaração do timer para atualizar o frame do Astro
+(send frame-astro-timer start 300) ; Inicialização do timer
+ 
+; Void -> Boolean
+; Checa se o Astro está próximo ao Yoshi
+(define (proximo-ao-yoshi?)
+    (< (abs (- yoshi-x astro-x)) 75))
+
+; Void -> void
+; Adiciona pontos ao total e atualiza na tela
+(define (add-pontos valor)
+  (set! pontos (+ pontos valor))
+  (send canvas refresh))
+
+; Void -> Void
+; Função que atualiza os frames para que ocorra a animação do Astro parado na tela
+(define (atualiza-frame-astro)
+  (set! frame-astro (modulo (+ frame-astro 1) 4))
+  (send canvas refresh))
+
+; String -> Void
+; Escreve caracter por caracter a string inserida em um text-field
+(define (texto-digitado texto)
+  (cond[(< indice-texto (string-length texto))
+        (set! texto-dinamico (substring texto 0 (+ indice-texto 1)))
+        (set! indice-texto (+ indice-texto 1))
+        (send field set-value texto-dinamico) 
+        (send field refresh)]
+       [else(send digita-timer stop)]))
+
+; String -> Void
+; Analisa a resposta do usuário a partir do resultado esperado da instrução atual
+(define (analise-resposta resposta-field-usuario)
+  (cond[(= indice-instrucao-atual (- (length lista-textos) 1)) (inicia-fim-jogo)]
+       [(< indice-instrucao-atual (length lista-textos))
+        (let* ([elemento-lista (list-ref lista-textos indice-instrucao-atual)]
+               [resultado-esperado (list-ref elemento-lista 1)])
+
+          (if (equal? resultado-esperado "")
+              (proxima-instrucao)
+              (begin
+                (let* ([resposta (string-trim resposta-field-usuario)])
+                  (if (= (length elemento-lista) 3)
+                      (testa-resultado-auxiliar resposta resultado-esperado)
+                      (testa-funcao-auxiliar resultado-esperado resposta (list-ref elemento-lista 3)))))))]))
+  
+; Void -> Void
+; Função para iniciar o estágio de fim do jogo
+(define (inicia-fim-jogo)
+  (altera-flags #f #f)
+  (set! fim-jogo #t))
+
+; Void -> void
+; Atualiza os dados necessários para passar para a próxima instrução da lista de textos
+(define (proxima-instrucao)
+  (set! indice-instrucao-atual (add1 indice-instrucao-atual))
+  (set! 2-tentativa? #f)
+  (cond [(< indice-instrucao-atual (length lista-textos))
+         (set! instrucao-atual (first (list-ref lista-textos indice-instrucao-atual)))
+         (reset-text-field)]))
+
+; String, String -> List
+; Retorna uma lista contendo como primeiro elemento um booleano e como segundo elemento uma mensagem de erro caso haja erro no teste do resultado. 
+(define (testa-resultado entrada resultado-esperado)
+    (with-handlers
+        [(exn:fail? (lambda (e)
+                      (list #f e)))]
+      (let* ([resultado (read (open-input-string entrada))]
+             [resultado-esperado-avaliado (read (open-input-string resultado-esperado))])
+        (if (equal? resultado resultado-esperado-avaliado)
+            (list #t)
+            (list #f "")))))
+
+; String, String -> Void
+; Função auxiliar para chamar uma função de resposta correta ou incorreta
+(define (testa-resultado-auxiliar entrada resultado-esperado)
+    (if (first (testa-resultado entrada resultado-esperado))
+        (resposta-correta 5)
+        (resposta-incorreta (first (rest (testa-resultado entrada resultado-esperado))))))
+
+; Boolean, Boolean -> Void
+; Altera as flags resposta-certa e resposta-errada para os valores passados como parâmetro
+(define (altera-flags resp-certa resp-errada)
+  (set! resposta-certa resp-certa)
+  (set! resposta-errada resp-errada))
+
+; Número -> Void
+; Recebe o número de pontos que o usuário deve ganhar e executa os comandos necessários quando uma resposta está correta
+(define (resposta-correta n)
+  (altera-flags #t #f)
+  (add-pontos n)
+  (proxima-instrucao))
+
+; String -> Void
+; Recebe uma mensagem de erro e executa as funções necessárias quando uma resposta está incorreta.
+(define (resposta-incorreta e)
+  (let ([dica (list-ref (list-ref lista-textos indice-instrucao-atual) 2)])
+    (altera-flags #f #t)
+    (cond[2-tentativa? 
+          (proxima-instrucao)]
+         [else
+          (exibe-msg-erro e dica)
+          (set! 2-tentativa? #t)])))
+
+; String, String -> Void
+; Recebe uma mensagem de erro e uma dica: a mensagem de erro pode ser uma mensagem capturada por uma exception, uma string vazia ou uma string indicando que algum teste
+; não passou para uma função enviada pelo usuário. Esta função exibe ao usuário a mensagem de erro e a dica quando ele erra uma pergunta pela primeira vez.
+(define (exibe-msg-erro msg-erro dica)
+  (cond[(equal? "" msg-erro) (send field set-value (string-append (send field get-value) "\n\n" dica))]
+       [(string? msg-erro) (send field set-value (string-append (send field get-value) "\n\n" msg-erro "\n\n" dica))]
+       [else(send field set-value (string-append (send field get-value) "\n\nMensagem de erro: " (exn-message msg-erro) "\n\n" dica))])
+  (send field refresh))
+
+; Void -> Void
+; Restaura os valores necessários para atualizar a escrita dinâmica do text-field e deixa vazio o text-field do usuário para responder próximas perguntas.
+(define (reset-text-field)
+  (set! texto-dinamico "")
+  (set! indice-texto 0)
+  (send digita-timer start 20)
+  (send field-usuario set-value "")
+  (send field-usuario refresh))
+
+; Símbolo, String, Lista -> Void
+; É uma função auxiliar para mostrar ao usuário se a avaliação de uma função enviada por ele está correta ou incorreta.
+(define (testa-funcao-auxiliar nome entrada casos-de-teste)
+  (let ([retorno-funcao  (testa-funcao nome entrada casos-de-teste)])
+    (if (first retorno-funcao)
+        (resposta-correta 10)
+        (resposta-incorreta (first (rest retorno-funcao))))))
+
+; Símbolo, string, list -> Void
+; Esta função testa dinamicamente uma função parada como pârametro. Para testá-la é necessário usar a função (eval) em um novo namespace.
+; Como é um novo namespace, é necessário importar (require racket) para que seja possível reconhecer palavras reservadas da linguagem.
+; Com (eval (read (open-input-string entrada)) namespace) é feito uma primeira avaliação da função contida na variável entrada, e para
+; efetuar os casos de teste basta realizar o eval com o nome da função posteriormente. 
+(define (testa-funcao nome entrada casos-de-teste)
+  (let ([namespace (make-base-namespace)])
+    (parameterize ((current-namespace namespace))
+      (eval '(require racket) namespace)
+      (with-handlers
+          [(exn:fail? (lambda (e)
+                        (list #f e)))] 
+        (eval (read (open-input-string entrada)) namespace)
+
+        (let ([lista-testes (for/list ([caso casos-de-teste])
+                              (let* ([args (first caso)]
+                                     [esperado (first (rest caso))]
+                                     [funcao (eval nome namespace)] ; função correspondente
+                                     [resultado (apply funcao args)])
+                                (if (not (equal? esperado resultado)) (format "Testes falharam para ~a. Esperado: ~a. Obtido: ~a\n" args esperado resultado) "")))])
+          (if (algum-teste-falhou? lista-testes) (list #f (string-join lista-testes " ")) (list #t)))))))
+
+; Lista -> Boolean
+; Função que auxilia a função de testar funções, pois verifica o resultado de um for/list para os casos de teste. Caso o resultado possua as mensagens de falha nos testes retorna #t, indicando que houve falha nos testes. Caso contrário, retorna #f.
+(define (algum-teste-falhou? lst)
+  (let ([string-resultante (string-join lst " ")])
+    (if (equal? (string-trim string-resultante) "") #f #t)))

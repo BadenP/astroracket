@@ -1,7 +1,8 @@
 ; Trabalho 01 - PPLF
-; Paula Fernandes Torres RA: 123565
+; Aluna: Paula Fernandes Torres RA: 123565
 
 #lang racket
+; Importação de bibliotecas
 (require racket/gui)
 (require racket/base)
 (require rackunit)
@@ -10,7 +11,7 @@
 ; Importação da lista contendo a sequência de instruções do jogo
 (require "lista-textos")
 
-; Imagens dos personagens
+; Imagens do personagem Astro 
 (define astronauta-correndo-esquerda (list (make-object bitmap% "imagens/astronauta-ce1.png")
                                       (make-object bitmap% "imagens/astronauta-ce2.png")
                                       (make-object bitmap% "imagens/astronauta-ce3.png")
@@ -57,33 +58,35 @@
 (define yoshi-y 425) ; Declaração da posição do Yoshi
 (define texto-dinamico "" ) ; Texto digitado caracter por caracter
 (define indice-texto 0) ; Índice do texto digitado
-(define digita-timer (new timer% [notify-callback (lambda () (texto-digitado instrucao-atual))])) ; Timer para a escrita dinâmica de texto
+(define digita-timer (new timer% [notify-callback (lambda () (texto-digitado instrucao-atual))])) ; Timer para a escrita dinâmica de texto, ao ser iniciado o timer ele dispara a chamada da função texto-digitado
 (define sentido 'right) ; Inicialização da direção do Astro e dos frames
 (define frame-astro 0)  ; Inicialização do frame do Astro
 (define movendo? #f) ; Flag para identificar a movimentação do astro e atualizar os frames
 (define proximo-yoshi #f) ; Flag para indicar se está próximo ao Yoshi
-(define frame-astro-timer (new timer% [notify-callback (lambda () (atualiza-frame-astro))])) ; Declaração do timer para atualizar o frame do Astro
-(send frame-astro-timer start 300) ; Inicialização do timer
+(define frame-astro-timer (new timer% [notify-callback (lambda () (atualiza-frame-astro))])) ; Declaração do timer para atualizar o frame do Astro, ao ser iniciado ele dispara a chamada da função atualiza-frame-astro
+(send frame-astro-timer start 300) ; Inicialização do timer de frames
  
+; Definições das funções
+
 ; Void -> Boolean
-; Checa se o Astro está próximo ao Yoshi
+; Checa se o Astro está próximo ao Yoshi: retorna #t se o Astro estiver próximo ao Yoshi e #f caso contrário.
 (define (proximo-ao-yoshi?)
     (< (abs (- yoshi-x astro-x)) 75))
 
-; Void -> void
-; Adiciona pontos ao total e atualiza na tela
+; Void -> Void
+; Função que soma pontos ao total de pontos e atualiza a exibição na tela
 (define (add-pontos valor)
   (set! pontos (+ pontos valor))
   (send canvas refresh))
 
 ; Void -> Void
-; Função que atualiza os frames para que ocorra a animação do Astro parado na tela
+; Função que atualiza os frames para que ocorra a animação na tela quando o Astro está parado
 (define (atualiza-frame-astro)
   (set! frame-astro (modulo (+ frame-astro 1) 4))
   (send canvas refresh))
 
 ; String -> Void
-; Escreve caracter por caracter a string inserida em um text-field
+; Função que digita caracter por caracter um texto passado como parâmetro em um text-field
 (define (texto-digitado texto)
   (cond[(< indice-texto (string-length texto))
         (set! texto-dinamico (substring texto 0 (+ indice-texto 1)))
@@ -93,7 +96,10 @@
        [else(send digita-timer stop)]))
 
 ; String -> Void
-; Analisa a resposta do usuário a partir do resultado esperado da instrução atual
+; Função que analisa a resposta do usuário a partir do resultado esperado da instrução atual. Cada resultado esperado de uma instrução é analisado para chamar a função correspondente para corrigir a resposta do usuário.
+; Caso o resultado esperado seja "", não é necessário analisar resposta e então a próxima instrução é chamada. Caso contrário, a partir do tamanho da lista que está a instrução atual é possível verificar se é preciso
+; chamar uma função para analisar somente respostas literais ou se é necessário a função para testar funções do usuário.
+; Caso o índice atual corresponda ao índice da última instrução da lista, não é preciso analisar resposta e é chamada a função para realizar o fim do jogo. 
 (define (analise-resposta resposta-field-usuario)
   (cond[(= indice-instrucao-atual (- (length lista-textos) 1)) (inicia-fim-jogo)]
        [(< indice-instrucao-atual (length lista-textos))
@@ -115,7 +121,7 @@
   (set! fim-jogo #t))
 
 ; Void -> void
-; Atualiza os dados necessários para passar para a próxima instrução da lista de textos
+; Função que atualiza os dados necessários para passar para a próxima instrução da lista de textos
 (define (proxima-instrucao)
   (set! indice-instrucao-atual (add1 indice-instrucao-atual))
   (set! 2-tentativa? #f)
@@ -124,7 +130,9 @@
          (reset-text-field)]))
 
 ; String, String -> List
-; Retorna uma lista contendo como primeiro elemento um booleano e como segundo elemento uma mensagem de erro caso haja erro no teste do resultado. 
+; Função que testa se uma resposta enviada pelo usuário está correta ou não. Recebe como parâmetros a entrada do usuário e o resultado esperado da pergunta atual.
+; Retorna uma lista contendo como primeiro elemento um booleano (indicando se está correta ou não). Caso esteja incorreta, a lista poderá ter um segundo elemento com uma
+; mensagem de erro caso seja capturada alguma exception.
 (define (testa-resultado entrada resultado-esperado)
     (with-handlers
         [(exn:fail? (lambda (e)
@@ -136,27 +144,29 @@
             (list #f "")))))
 
 ; String, String -> Void
-; Função auxiliar para chamar uma função de resposta correta ou incorreta
+; Função auxiliar para chamar a função testa-resultado, a partir do primeiro elemento retornado por testa-resultado as funções de resposta correta ou incorreta são chamadas.
 (define (testa-resultado-auxiliar entrada resultado-esperado)
     (if (first (testa-resultado entrada resultado-esperado))
         (resposta-correta 5)
         (resposta-incorreta (first (rest (testa-resultado entrada resultado-esperado))))))
 
 ; Boolean, Boolean -> Void
-; Altera as flags resposta-certa e resposta-errada para os valores passados como parâmetro
+; Altera as flags resposta-certa e resposta-errada para os valores passados como parâmetro.
 (define (altera-flags resp-certa resp-errada)
   (set! resposta-certa resp-certa)
   (set! resposta-errada resp-errada))
 
 ; Número -> Void
-; Recebe o número de pontos que o usuário deve ganhar e executa os comandos necessários quando uma resposta está correta
+; Recebe o número de pontos que o usuário deve ganhar e executa os comandos necessários quando uma resposta está correta.
 (define (resposta-correta n)
   (altera-flags #t #f)
   (add-pontos n)
   (proxima-instrucao))
 
 ; String -> Void
-; Recebe uma mensagem de erro e executa as funções necessárias quando uma resposta está incorreta.
+; Recebe uma mensagem de erro e executa as funções necessárias quando uma resposta está incorreta. A flag 2-tentativa? indica se o usuário está na sua segunda tentativa
+; para acertar a pergunta ou não. Caso 2-tentativa? seja #t, o usuário não tem mais chances para responder e é chamada a próxima instrução. Caso contrário, é chamada uma
+; função para exibir a mensagem ao usuário junto com a dica da pergunta, e a flag 2-tentativa? é definida como #t.
 (define (resposta-incorreta e)
   (let ([dica (list-ref (list-ref lista-textos indice-instrucao-atual) 2)])
     (altera-flags #f #t)
@@ -192,30 +202,41 @@
         (resposta-correta 10)
         (resposta-incorreta (first (rest retorno-funcao))))))
 
-; Símbolo, string, list -> Void
-; Esta função testa dinamicamente uma função parada como pârametro. Para testá-la é necessário usar a função (eval) em um novo namespace.
-; Como é um novo namespace, é necessário importar (require racket) para que seja possível reconhecer palavras reservadas da linguagem.
-; Com (eval (read (open-input-string entrada)) namespace) é feito uma primeira avaliação da função contida na variável entrada, e para
-; efetuar os casos de teste basta realizar o eval com o nome da função posteriormente. 
-(define (testa-funcao nome entrada casos-de-teste)
-  (let ([namespace (make-base-namespace)])
-    (parameterize ((current-namespace namespace))
-      (eval '(require racket) namespace)
-      (with-handlers
-          [(exn:fail? (lambda (e)
-                        (list #f e)))] 
-        (eval (read (open-input-string entrada)) namespace)
+; Símbolo, string, list -> List
+; Esta função testa dinamicamente uma função parada como pârametro. Para testá-la é necessário usar a função (eval) em um novo namespace, um contexto em que variáveis e funções são
+; definidas e identificadas. O uso desse novo namespace foi feito para evitar conflitos com a execução do programa atual. Como há um novo namespace, é necessário importar
+; (require racket) para que seja possível reconhecer palavras reservadas da linguagem. Com (eval (read (open-input-string entrada)) namespace) é feito uma primeira avaliação
+; da função contida na variável entrada, para que a função seja definida no namespace e posteriormente seja possível resgatar essa função pelo seu nome para realizar os testes. 
+; A função retorna uma lista contendo como primeiro elemento um booleano que indica a função testada passou nos testes ou não. Caso seja capturado alguma exception durante a
+; avaliação da função ou ela não passe nos testes, o segundo elemento da lista retornada é uma mensagem do erro.
 
-        (let ([lista-testes (for/list ([caso casos-de-teste])
-                              (let* ([args (first caso)]
-                                     [esperado (first (rest caso))]
-                                     [funcao (eval nome namespace)] ; função correspondente
-                                     [resultado (apply funcao args)])
-                                (if (not (equal? esperado resultado)) (format "Testes falharam para ~a. Esperado: ~a. Obtido: ~a\n" args esperado resultado) "")))])
-          (if (algum-teste-falhou? lista-testes) (list #f (string-join lista-testes " ")) (list #t)))))))
+; Para conseguir identificar se a função passou nos testes, é preciso analisar o resultado obtido do for/list dos casos de teste. O for/list retorna uma lista com os retornos obtidos
+; para cada teste. Foi definido que se um teste não passou, o que é retornado é uma string com os dados do teste. Se o teste passou, retorna uma string vazia "". A partir disso,
+; a função algum-teste-falhou? agrupa todos os elementos dessa lista de resultados e consegue verificar se algum teste falhou. O retorno da função para um teste que falhou
+; é uma lista com primeiro elemento sendo #f e o resto sendo as mensagens de erro dos testes. O retorno da função caso os testes passem é uma lista contendo #t.
+(define (testa-funcao nome entrada casos-de-teste)
+  (if (string-contains? entrada "(exit)")
+      (list #f "Mensagem de erro: (exit) não permitido\n")
+      (let ([namespace (make-base-namespace)])
+        (parameterize ((current-namespace namespace))
+          (eval '(require racket) namespace)
+          (with-handlers
+              [(exn:fail? (lambda (e)
+                            (list #f e)))] 
+            (eval (read (open-input-string entrada)) namespace)
+
+            (let ([lista-testes (for/list ([caso casos-de-teste])
+                                  (let* ([args (first caso)]
+                                         [esperado (first (rest caso))]
+                                         [funcao (eval nome namespace)] ; função correspondente
+                                         [resultado (apply funcao args)])
+                                    (if (not (equal? esperado resultado)) (format "Testes falharam para ~a. Esperado: ~a. Obtido: ~a\n" args esperado resultado) "")))])
+              (if (algum-teste-falhou? lista-testes) (list #f (string-join lista-testes " ")) (list #t))))))))
 
 ; Lista -> Boolean
-; Função que auxilia a função de testar funções, pois verifica o resultado de um for/list para os casos de teste. Caso o resultado possua as mensagens de falha nos testes retorna #t, indicando que houve falha nos testes. Caso contrário, retorna #f.
+; Função que auxilia a função de testar funções, pois verifica o resultado de um for/list para os casos de teste. Caso o resultado possua as mensagens de falha nos testes retorna
+; #t, indicando que houve falha nos testes. Caso contrário, retorna #f. A função string-join permite agrupar todos os elementos da lista passada como parâmetro, e portanto, se
+; o resultado não é "", é porque houve falha em no mínimo um teste.
 (define (algum-teste-falhou? lst)
   (let ([string-resultante (string-join lst " ")])
     (if (equal? (string-trim string-resultante) "") #f #t)))
@@ -375,10 +396,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
- ;TESTES UNITÁRIOS
+; TESTES UNITÁRIOS
 
-; Nesta parte estão implementados os testes unitários de algumas funções. Testar funções que alteram a interface antes interagir com o jogo poderão afetar a jogabilidade. 
-; Como por exemplo, ao executar os testes para checar se o personagem está próximo ele se movimentará sozinho pela tela para testar cada posição do teste.
+; Nesta parte estão implementados os testes unitários
 
 ; Número -> Boolean
 ; Função auxiliar para conseguir testar a função proximo-ao-yoshi?. A função original não recebe parâmetros pois ela analisa a posição do personagem Astro
@@ -421,6 +441,14 @@
                                            ((-34 -65) -34)
                                            ((4 -5) 4)))
                             (list #t)) 
+              (check-equal? (testa-funcao 'maior-valor 
+                                          "(define (maior-valor a b) (exit))"
+                                          '(((1 2) 2)
+                                           ((6 6) 6)
+                                           ((123 121) 123)
+                                           ((-34 -65) -34)
+                                           ((4 -5) 4)))
+                            (list #f "Mensagem de erro: (exit) não permitido\n"))
               (check-equal? (testa-funcao 'maior-valor 
                                           "(define (maior-valor a b) (* a b))" 
                                           '(((1 2) 2)

@@ -14,14 +14,15 @@
       '(
         ("Olá, Astro. Seja bem-vindo.
 
-Neste mundo, as máquinas maliciosas conquistaram a Terra e você é o último humano que resta. Logo, a esperança da humanidade repousa em seus ombros! Sua missão é aprender Racket e conseguir uma nave espacial para retornar para a Terra. Estarei aqui para te ajudar nessa jornada! Vou te fornecer os fundamentos e iremos praticar exercícios para que você adquira o conhecimento necessário para completar sua missão.
+Neste mundo, as máquinas maliciosas conquistaram a Terra e você é o último humano que resta. Logo, a esperança da humanidade repousa em seus ombros! Sua missão é aprender Racket para conseguir uma nave espacial para retornar ao seu planeta. Estarei aqui para te ajudar nessa jornada! Vou te fornecer os fundamentos e iremos praticar exercícios para que você adquira o conhecimento necessário para completar sua missão.
 
 Lembre-se: conhecimento é muito importante! Você precisa de pontos de conhecimento em Racket para conseguir uma nave robusta e ser capaz de derrotar as máquinas!
  
 [sempre pressione a tecla enter para avançar]" "")
 
-        ("Vamos começar a aprender sobre Racket, uma linguagem que suporta a programação funcional! Programação funcional é um paradigma de programação em que os programas são
-descritos com aplicação e composição de funções, ela evita mudança de estado e efeitos colaterais. Ou seja, não podemos alterar o valor das variáveis declaradas em Racket. Uma função é um conjunto de expressões que mapeia valores de entrada para valores de saída.
+        ("Vamos começar a aprender sobre Racket, uma linguagem que suporta a programação funcional! Utilizaremos o conhecimento fornecido pela documentação da linguagem, então seja esperto e guarde este link para consultar as referências caso precise: https://docs.racket-lang.org/guide/to-scheme.html
+
+A programação funcional é um paradigma de programação em que os programas são descritos com aplicação e composição de funções, ela evita mudança de estado e efeitos colaterais. Ou seja, não podemos alterar o valor das variáveis declaradas em Racket. Uma função é um conjunto de expressões que mapeia valores de entrada para valores de saída.
 
 As expressões são entidades sintáticas que quando avaliadas produzem um valor. Consistem de um literal ou uma função primitiva. Exemplos:
 
@@ -209,8 +210,7 @@ Considerando as definições acima, responda o que será retornado ao avaliar a 
 
 (if (and (> b a) (< b (* a b))) b a)" "4"  "Dica: lembre da avaliação das cláusulas para operadores lógicos e releia sobre a avaliação de expressões if")
 
-        ("
-Definições anteriores:
+        ("Definições anteriores:
 (define a 3) 
 (define b (+ a 1))
 
@@ -339,7 +339,7 @@ Abaixo está exibido o programa completo, com as bibliotecas exigidas e as funç
                          ((-34 -65) -34)
                          ((4 -5) 4)))
 
-        ("Defina uma função de nome ''maior-palavra'' que retorne a maior palavra entre duas palavras dadas." maior-palavra "Dica: utilize a função primitiva string-length"
+        ("Defina uma função de nome ''maior-palavra'' que retorne a maior palavra entre duas palavras dadas." maior-palavra "Dica: utilize a função primitiva string-length."
                         ((("abc" "roma") "roma")
                          (("casamento" "lebre") "casamento")
                          (("" "dois") "dois")
