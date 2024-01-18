@@ -9,7 +9,7 @@
 (require rackunit/text-ui)
 
 ; Importação da lista contendo a sequência de instruções do jogo
-(require "lista-textos")
+(require "lista-textos.rkt")
 
 ; Imagens do personagem Astro 
 (define astronauta-correndo-esquerda (list (make-object bitmap% "imagens/astronauta-ce1.png")
@@ -228,7 +228,7 @@
             (let ([lista-testes (for/list ([caso casos-de-teste])
                                   (let* ([args (first caso)]
                                          [esperado (first (rest caso))]
-                                         [funcao (eval nome namespace)] ; função correspondente
+                                         [funcao (eval nome namespace)]
                                          [resultado (apply funcao args)])
                                     (if (not (equal? esperado resultado)) (format "Testes falharam para ~a. Esperado: ~a. Obtido: ~a\n" args esperado resultado) "")))])
               (if (algum-teste-falhou? lista-testes) (list #f (string-join lista-testes " ")) (list #t))))))))
